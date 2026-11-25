@@ -43,6 +43,7 @@ foreach ($pin in $pins.PSObject.Properties) {
             Invoke-Git -C $checkout init --quiet
         }
         Invoke-Git -C $checkout config --local core.autocrlf false
+        Invoke-Git -C $checkout config --local core.longpaths true
         Invoke-Git -C $checkout fetch --quiet --depth=1 $source $revision
         Invoke-Git -C $checkout checkout --quiet --detach $revision
         Remove-Item -LiteralPath (Join-Path $checkout '.autoscape-bootstrap')

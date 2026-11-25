@@ -16,6 +16,17 @@ Cargo uses the sibling repositories in [upstreams.json](upstreams.json), includi
 
 The browser saves favorites in its user profile. `--config-home <dir>` or `AUTOSCAPE_HOME` isolates that profile. Todo uses in-memory state by default. Create an empty directory and launch with `--todo-data <absolute-dir>` to persist Todo there. Use the same directory on the next launch.
 
+## AutoOS application
+
+AutoOS registers `auto-scape` from `apps/auto-scape`. In an AutoOS checkout, initialize the app submodule and build its declared native executable:
+
+```powershell
+git submodule update --init apps/auto-scape
+pwsh -NoProfile -File apps/auto-scape/scripts/build-auto-os.ps1
+```
+
+Pass `-MirrorRoot <parent-of-mirrors>` on development machines that have the pinned engine sources locally. The script stages the pinned source group under the app's `target/auto-os/` and builds `target/debug/auto-scape.exe`. Keep that source group available for the built-in Gallery. Select AutoScape in the AutoOS launcher to run the browser as its own process with the existing desktop rendering protocol. The integration is tracked by [AutoOS PLAN-077](https://github.com/auto-stack/auto-os/blob/main/docs/plans/077-autoscape-native-app.md).
+
 ## Verify
 
 The integration suite exercises Gallery input and previews, browser navigation, and a loopback HTTPS server with an isolated trust root. Run the window cases serially on a Windows desktop. Provider preparation is a separate step.

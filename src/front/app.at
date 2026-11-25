@@ -1,0 +1,6 @@
+// The AutoOS app registry uses this source entry to locate the native app root.
+widget App {
+    view {
+        text("AutoScape · launch from the AutoOS application menu")
+    }
+}

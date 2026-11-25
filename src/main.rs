@@ -28,6 +28,11 @@ use auto_scape::browser_shell::{
     autoscape_config_root, install_shell_host, resolve_fixture_root, with_shell_host,
     AutoscapeHost, AutoscapeWindow, ShellAction, AUTOSCAPE_FRAMES,
 };
+use auto_ui_runtime::ui::desktop_protocol::{
+    client_entry::{run_native_client, ClientOpts, ClientTarget},
+    message::FrameMode,
+    rqhost::vm_window_size,
+};
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
@@ -48,9 +53,14 @@ fn main() {
     let mut todo_code_root: Option<PathBuf> = None;
     let mut todo_data: Option<PathBuf> = None;
     let mut exit_on_script = false;
+    let mut desktop = false;
+    let mut desktop_endpoint = None;
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
-        match a.as_str() {
+        let (flag, attached) = a
+            .split_once('=')
+            .map_or((a.as_str(), None), |(flag, value)| (flag, Some(value)));
+        match flag {
             "--help" | "-h" => {
                 println!(
                     "AutoScape\n\
@@ -84,6 +94,23 @@ fn main() {
             "--script" => script_spec = args.next(),
             "--await-window-close" => await_window_close = true,
             "--exit-on-script" => exit_on_script = true,
+            "--render-mode" => {
+                match attached
+                    .map(str::to_owned)
+                    .or_else(|| args.next())
+                    .as_deref()
+                {
+                    Some("desktop") => desktop = true,
+                    Some("independent") => desktop = false,
+                    _ => invalid_launch("--render-mode expects independent or desktop"),
+                }
+            }
+            "--desktop-endpoint" => {
+                desktop_endpoint = attached.map(str::to_owned).or_else(|| args.next());
+            }
+            // The AutoOS launcher sends both its current and compatibility flags.
+            "--autodesk-incubate" => {}
+            "--app386" | "--autodesk-broker" | "--autodesk-render" if attached.is_some() => {}
             "--prep-only" => {
                 auto_ui_runtime::ui::ace_node_desktop::ensure_ui980_provider()
                     .expect("ui980 provider prep");
@@ -94,6 +121,15 @@ fn main() {
                 std::process::exit(2);
             }
         }
+    }
+    let desktop_endpoint = match (desktop, desktop_endpoint) {
+        (true, Some(endpoint)) if !endpoint.trim().is_empty() => Some(endpoint),
+        (true, _) => invalid_launch("desktop mode requires --desktop-endpoint"),
+        (false, Some(_)) => invalid_launch("--desktop-endpoint requires desktop mode"),
+        (false, None) => None,
+    };
+    if desktop && exit_on_script {
+        invalid_launch("desktop mode closes through the AutoOS window lifecycle");
     }
     if exit_on_script && (script_spec.is_none() || evidence_path.is_none() || await_window_close) {
         eprintln!("auto-scape: --exit-on-script requires --script and --evidence without --await-window-close");
@@ -181,12 +217,28 @@ fn main() {
         });
     }
 
-    if let Err(e) =
+    let window_result = if let Some(endpoint) = desktop_endpoint {
+        let (width, height) = vm_window_size();
+        run_native_client(
+            AutoscapeWindow::default(),
+            ClientOpts {
+                app_name: "auto-scape".into(),
+                title: "AutoScape".into(),
+                width,
+                height,
+                frame_mode: FrameMode::Commands,
+                auto_downgraded: false,
+                remote: true,
+            },
+            ClientTarget::Desktop {
+                endpoint,
+                app_name: "auto-scape".into(),
+            },
+        )
+    } else {
         auto_ui_runtime::ui::iced::run_app_with_title::<AutoscapeWindow>(Some("AutoScape"))
-    {
-        eprintln!("auto-scape: window run failed: {e:?}");
-        std::process::exit(7);
-    }
+            .map_err(|error| format!("{error:?}"))
+    };
 
     let outcome = with_shell_host(|h| {
         let before = h.evidence();
@@ -203,6 +255,15 @@ fn main() {
     if cleanup.is_err() {
         std::process::exit(8);
     }
+    if let Err(error) = window_result {
+        eprintln!("auto-scape: window run failed: {error}");
+        std::process::exit(7);
+    }
+}
+
+fn invalid_launch(error: &str) -> ! {
+    eprintln!("auto-scape: {error}");
+    std::process::exit(2);
 }
 
 fn write_evidence(path: &std::path::Path, json: &serde_json::Value) {

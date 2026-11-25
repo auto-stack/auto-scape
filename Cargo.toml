@@ -22,3 +22,5 @@ tempfile = "3"
 [patch.crates-io]
 iced_widget = { path = "../auto-ui/crates/patches/iced_widget" }
 iced_wgpu = { path = "../auto-ui/crates/patches/iced_wgpu" }
+
+[workspace]
