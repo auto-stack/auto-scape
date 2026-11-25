@@ -1,0 +1,24 @@
+[package]
+name = "auto-scape"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[dependencies]
+auto-ui-runtime = { path = "../auto-ui/crates/auto-ui-runtime", features = ["ace-bridge"] }
+auto-lang-core = { path = "../auto-lang/crates/auto-lang-core" }
+ase-m0 = { path = "../auto-lang/experimental/ase-m0" }
+dirs = "6.0.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+rcgen = { version = "0.13", default-features = false, features = ["pem", "ring"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+sha2 = "0.10"
+tempfile = "3"
+
+[patch.crates-io]
+iced_widget = { path = "../auto-ui/crates/patches/iced_widget" }
+iced_wgpu = { path = "../auto-ui/crates/patches/iced_wgpu" }

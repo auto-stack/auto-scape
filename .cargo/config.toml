@@ -1,0 +1,5 @@
+[env]
+RUST_MIN_STACK = "16777216"
+
+[target.'cfg(windows)']
+rustflags = ["-C", "link-args=/STACK:536870912"]
